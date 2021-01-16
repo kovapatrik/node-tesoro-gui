@@ -6,7 +6,8 @@ import InputRange from 'react-input-range';
 
 function App() {
 
-  const [profileState, setProfileState] = useState({profile_num: 0, color: {r: 0, g: 0, b:0, a:0}, effect: 0, effect_color: 0, brightness: 0})
+  const [profileState, setProfileState] = useState({profile_num: 0, r: 0, g: 0, b:0, effect: 0, effect_color: 0, brightness: 0})
+  let alpha = 0;
   useEffect(() => {
     getProfile();
   }, [])
@@ -14,7 +15,6 @@ function App() {
   async function getProfile() {
     const response = await fetch('/api/profile');
     const data = await response.json();
-    console.log(data.profile);
     setProfileState(data.profile);
   }
   async function handleButton() {
@@ -31,6 +31,10 @@ function App() {
       body: JSON.stringify({[name]: data})
     });
     await getProfile();
+  }
+  
+  async function handeProfileChangesClientSide(name: string, data: any) {
+    setProfileState({...profileState, ...{[name]: data}});
   }
 
   const profileNumOptions = [
@@ -84,11 +88,11 @@ function App() {
               </Segment>
               <Segment>
                 <Header size='medium'>Profile Brightness</Header>
-                <InputRange minValue={0} maxValue={4} formatLabel={value => `${value*25}`} value={profileState.brightness} onChange={value => handleProfileChanges('brightness', value)}/>
+                <InputRange minValue={0} maxValue={4} formatLabel={value => `${value*25}`} value={profileState.brightness} onChangeComplete={value => handleProfileChanges('brightness', value)} onChange={(value) => handeProfileChangesClientSide('brightness', value)}/>
               </Segment>
               <Segment color='purple' inverted>
                 <Header size='medium'>Profile Color</Header>
-                <ChromePicker onChangeComplete={(d, _) => handleProfileChanges('color', d.rgb)} color={profileState.color}/>
+                <ChromePicker onChangeComplete={(d, _) => handleProfileChanges('color', d.rgb)} color={{r: profileState.r, g: profileState.g, b: profileState.b, a: alpha}}/>
               </Segment>
             </Segment.Group>
           </Segment.Group>

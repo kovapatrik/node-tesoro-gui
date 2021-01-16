@@ -26,10 +26,7 @@ const keyboard = new TesoroGramSE(new HID.HID(HID.devices()
 
 // Getters
 app.get('/api/profile', (req, res) => {
-    let send_data = profileState;
-    let color = {r: send_data.r, g: send_data.g, b: send_data.b};
-    delete send_data.r; delete send_data.g; delete send_data.b;
-    res.send({profile: {...send_data, color: color}});
+    res.send({profile: profileState});
     res.end();
 });
 // Setters
