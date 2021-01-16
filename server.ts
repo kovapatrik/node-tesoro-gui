@@ -1,5 +1,5 @@
 import HID from 'node-hid';
-import {TesoroGramSE, Profile} from 'node-tesoro';
+import {TesoroGramSE, Profile, ProfileState} from 'node-tesoro';
 import express from 'express';
 import bodyParser from 'body-parser';
 import path from 'path';
@@ -10,13 +10,43 @@ const port = process.env.PORT || 5000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
+let profileState : ProfileState = {
+    profile_num: Profile.ProfileSelect.Profile1,
+    r: 255,
+    g: 76,
+    b: 0,
+    effect: Profile.Effect.Spectrum,
+    effect_color: Profile.EffectColor.Static,
+    brightness: Profile.Brightness.B100
+}
+
 const keyboard = new TesoroGramSE(new HID.HID(HID.devices()
                       .filter(x => x.path && x.productId == 0x2057 && x.interface == 1 && x.path.includes("col05"))[0].path!), 
-                      'hungarian');
+                      'hungarian', profileState);
 
-app.get('/api/test', (req, res)=> {
-    keyboard.changeProfile(Profile.ProfileSelect.Profile1);
+// Getters
+app.get('/api/profile', (req, res) => {
+    let send_data = profileState;
+    let color = {r: send_data.r, g: send_data.g, b: send_data.b};
+    delete send_data.r; delete send_data.g; delete send_data.b;
+    res.send({profile: {...send_data, color: color}});
+    res.end();
 });
+// Setters
+app.post('/api/profile', (req, res) => {
+    let recv_data = req.body;
+    if ('color' in recv_data) {
+        let color = recv_data.color;
+        delete recv_data.color;
+        profileState = {...profileState, ...recv_data, r: color.r, g: color.g, b: color.b};
+    } else {
+        profileState = {...profileState, ...recv_data};
+    }
+    res.send('ok');
+    res.end();
+})
+
+
 
 if (process.env.NODE_ENV === 'production') {
     // Serve any static files
