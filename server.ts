@@ -25,12 +25,12 @@ const keyboard = new TesoroGramSE(new HID.HID(HID.devices()
                       'hungarian', profileState);
 
 // Getters
-app.get('/api/profile', (req, res) => {
+app.get('/get/profile', (_, res) => {
     res.send({profile: profileState});
     res.end();
 });
 // Setters
-app.post('/api/profile', (req, res) => {
+app.post('/save/profile', (req, res) => {
     let recv_data = req.body;
     if ('color' in recv_data) {
         let color = recv_data.color;
@@ -42,6 +42,23 @@ app.post('/api/profile', (req, res) => {
     res.send('ok');
     res.end();
 })
+// Keyboard API
+app.post('/change/profile', async (req, res) => {
+    // query db for profile
+    let recv_data = req.body;
+    console.log('change profile', profileState.profile_num);
+    await keyboard.changeProfile(recv_data.profile_num);
+    res.end();
+})
+app.get('/send/profile', async (_, res) => {
+    console.log('send profile');
+    if (keyboard.profile_state.profile_num != profileState.profile_num) {
+        await keyboard.changeProfile(profileState.profile_num!);
+    }
+    keyboard.setProfileSettings(profileState);
+    await keyboard.sendProfileSettings();
+    res.end();
+})
 
 
 
@@ -49,7 +66,7 @@ if (process.env.NODE_ENV === 'production') {
     // Serve any static files
     app.use(express.static(path.join(__dirname, 'client/lib')));
     // Handle React routing, return all requests to React app
-    app.get('*', function(req, res) {
+    app.get('*', function(_, res) {
         res.sendFile(path.join(__dirname, 'client/lib', 'index.html'));
     });
 }

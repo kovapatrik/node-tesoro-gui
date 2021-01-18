@@ -7,12 +7,10 @@ body {
 }
 
 #root {
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  padding-top: 40px;
+  width: 80%;
   overflow: hidden;
+  margin: auto;
 }
 
 .input-range__slider {
