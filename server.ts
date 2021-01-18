@@ -3,6 +3,10 @@ import {TesoroGramSE, Profile, ProfileState} from 'node-tesoro';
 import express from 'express';
 import bodyParser from 'body-parser';
 import path from 'path';
+import AsyncNedb from 'nedb-async';
+
+const profiles = new AsyncNedb<ProfileState>({filename: './data/profiles.db', autoload: true});
+profiles.ensureIndex({fieldName: '_id'});
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -10,8 +14,8 @@ const port = process.env.PORT || 5000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
-let profileState : ProfileState = {
-    profile_num: Profile.ProfileSelect.Profile1,
+const defaultProfileState : ProfileState = {
+    _id: undefined,
     r: 255,
     g: 76,
     b: 0,
@@ -20,17 +24,34 @@ let profileState : ProfileState = {
     brightness: Profile.Brightness.B100
 }
 
+let profileState : ProfileState;
+
+async function getDefaultState() {
+    const t = await profiles.asyncFind({});
+    console.log(t);
+}
+
+//getDefaultState();
+
 const keyboard = new TesoroGramSE(new HID.HID(HID.devices()
                       .filter(x => x.path && x.productId == 0x2057 && x.interface == 1 && x.path.includes("col05"))[0].path!), 
-                      'hungarian', profileState);
+                      'hungarian');
 
 // Getters
-app.get('/get/profile', (_, res) => {
+app.post('/get/profile', async (req, res) => {
+    const next_profile = await profiles.asyncFindOne({'_id': req.body._id});
+    if (next_profile) {
+        profileState = next_profile;
+    } else {
+        const new_profile = {...defaultProfileState, _id: req.body._id};
+        await profiles.asyncInsert(new_profile);
+        profileState = new_profile;
+    }
     res.send({profile: profileState});
     res.end();
 });
 // Setters
-app.post('/save/profile', (req, res) => {
+app.post('/save/profile', async (req, res) => {
     let recv_data = req.body;
     if ('color' in recv_data) {
         let color = recv_data.color;
@@ -39,6 +60,10 @@ app.post('/save/profile', (req, res) => {
     } else {
         profileState = {...profileState, ...recv_data};
     }
+
+    await profiles.asyncUpdate({'_id': profileState._id}, {...profileState}, {upsert: true});
+    
+
     res.send('ok');
     res.end();
 })
@@ -46,14 +71,14 @@ app.post('/save/profile', (req, res) => {
 app.post('/change/profile', async (req, res) => {
     // query db for profile
     let recv_data = req.body;
-    console.log('change profile', profileState.profile_num);
-    await keyboard.changeProfile(recv_data.profile_num);
+    console.log('change profile', profileState._id);
+    await keyboard.changeProfile(recv_data._id);
     res.end();
 })
 app.get('/send/profile', async (_, res) => {
     console.log('send profile');
-    if (keyboard.profile_state.profile_num != profileState.profile_num) {
-        await keyboard.changeProfile(profileState.profile_num!);
+    if (keyboard.profile_state._id != profileState._id) {
+        await keyboard.changeProfile(profileState._id!);
     }
     keyboard.setProfileSettings(profileState);
     await keyboard.sendProfileSettings();

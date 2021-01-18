@@ -6,17 +6,24 @@ import InputRange from 'react-input-range';
 
 function App() {
 
-  const [profileState, setProfileState] = useState({profile_num: 0, r: 0, g: 0, b:0, effect: 0, effect_color: 0, brightness: 0})
+  const [profileState, setProfileState] = useState({_id: 0, r: 0, g: 0, b:0, effect: 0, effect_color: 0, brightness: 0})
   const alpha = 1;
   useEffect(() => {
-    getProfile();
+    getProfile(1);
   }, [])
 
-  async function getProfile() {
-    const response = await fetch('/get/profile');
+  async function getProfile(_id: number) {
+    const response = await fetch('/get/profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({_id})
+    });
     const data = await response.json();
-    setProfileState(data.profile);
+    setProfileState({...data.profile});
   }
+
   async function handleProfileSendButton() {
     await handleProfileSaveButton();
     await fetch('/send/profile');
@@ -38,15 +45,19 @@ function App() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({profile_num: profileState.profile_num})
+      body: JSON.stringify({_id: profileState._id})
     });
   }
 
   async function handleProfileChanges(name : string, data: any) {
-    if (name == 'color') {
-      setProfileState({...profileState, r: data.r, g: data.g, b: data.b});
+    if (name == '_id') {
+      await getProfile(data);
     } else {
-      setProfileState({...profileState, ...{[name]: data}});
+      if (name == 'color') {
+        setProfileState({...profileState, r: data.r, g: data.g, b: data.b});
+      } else {
+        setProfileState({...profileState, ...{[name]: data}});
+      }
     }
   }
 
@@ -88,7 +99,7 @@ function App() {
               <Segment.Group>
                 <Segment color='purple' inverted>
                   <Header size='medium'>Profile Number</Header>
-                  <Menu compact items={profileNumOptions} activeIndex={profileState.profile_num-1}  onItemClick={(_, d) => handleProfileChanges('profile_num', d.value)}/>
+                  <Menu compact items={profileNumOptions} activeIndex={profileState._id-1}  onItemClick={(_, d) => handleProfileChanges('_id', d.value)}/>
                   <Button floated='right' onClick={handleChangeProfileOnly}>Change Profile Only</Button>
                 </Segment>
                 <Segment>
