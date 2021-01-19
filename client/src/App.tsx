@@ -9,40 +9,37 @@ const socket = io('/');
 function App() {
 
   const [profileState, setProfileState] = useState({_id: 0, r: 0, g: 0, b:0, effect: 0, effect_color: 0, brightness: 0})
+  const [buttonDisabled, setButtonDisabled] = useState(false)
   const alpha = 1;
   useEffect(() => {
-    getProfile(1);
-
     socket.on('profile server', async(data:any) => {
       setProfileState(data);
     });
-    
   }, [])
 
-  function getProfile(_id: number) {
-    socket.emit('profile get', {_id}, (res:any) => {
-      setProfileState(res.profile)
+  function handleProfileSendButton() {
+    setButtonDisabled(true);
+    socket.emit('profile save', profileState, () => {
+      socket.emit('profile send', {}, () => {
+        setButtonDisabled(false);
+      });
     });
   }
 
-  function handleProfileSendButton() {
-    handleProfileSaveButton();
-    socket.emit('profile send');
-  }
-
   function handleProfileSaveButton() {
-    socket.emit('profile save', profileState)
-  }
-
-  function handleChangeProfileOnly() {
-    socket.emit('profile change', {_id: profileState._id});
+    setButtonDisabled(true);
+    socket.emit('profile save', profileState, () => {
+        setButtonDisabled(false);
+    });
   }
 
   function handleProfileChanges(name : string, data: any) {
-    if (name == '_id') {
-      getProfile(data);
+    if (name === '_id') {
+      socket.emit('profile change', data, (res:any) => {
+        setProfileState(res.profile);
+      });
     } else {
-      if (name == 'color') {
+      if (name === 'color') {
         setProfileState({...profileState, r: data.r, g: data.g, b: data.b});
       } else {
         setProfileState({...profileState, ...{[name]: data}});
@@ -89,7 +86,6 @@ function App() {
                 <Segment color='purple' inverted>
                   <Header size='medium'>Profile Number</Header>
                   <Menu compact items={profileNumOptions} activeIndex={profileState._id-1}  onItemClick={(_, d) => handleProfileChanges('_id', d.value)}/>
-                  <Button floated='right' onClick={handleChangeProfileOnly}>Change Profile Only</Button>
                 </Segment>
                 <Segment>
                   <Header size='medium'>Profile Effect</Header>
@@ -108,8 +104,8 @@ function App() {
                   <ChromePicker onChange={(d, _) => handleProfileChanges('color', d.rgb)} onChangeComplete={(d, _) => handleProfileChanges('color', d.rgb)} color={{r: profileState.r, g: profileState.g, b: profileState.b, a: alpha}}/>
                 </Segment>
                 <Segment>
-                  <Button color='purple' onClick={handleProfileSaveButton}>Save Profile Settings</Button>
-                  <Button color='purple' onClick={handleProfileSendButton}>Send Profile Settings</Button>
+                  <Button color='purple' onClick={handleProfileSaveButton} disabled={buttonDisabled}>Save Profile Settings</Button>
+                  <Button color='purple' onClick={handleProfileSendButton} disabled={buttonDisabled}>Send Profile Settings</Button>
                 </Segment>
               </Segment.Group>
             </Segment.Group>

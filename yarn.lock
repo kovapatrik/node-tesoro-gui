@@ -1176,10 +1176,10 @@ node-hid@^2.1.1:
     node-addon-api "^3.0.2"
     prebuild-install "^6.0.0"
 
-node-tesoro@^0.4.0:
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/node-tesoro/-/node-tesoro-0.4.0.tgz#4c5eadca22c096b6c5dfc63361388b1133c23fb2"
-  integrity sha512-Ll/fd72yHxOqjIWIU68mn7OxzsSD8EFAPuA2F2g/tzlLVhRAq/cPSJEbyX/JOQr1T/RxAWGn1fNti+o1w+taew==
+node-tesoro@^0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/node-tesoro/-/node-tesoro-0.4.1.tgz#10aac159eb83e2e5d775b2f05af85f3d8150d82f"
+  integrity sha512-YiYQht7kUH85Ou3X24S3ysoCxxMr8tFwms4sDo71P+p7ZImaym6k7rnGfsxuv7w9XvCGTs9Ss7yaLd4nmO6KMA==
   dependencies:
     inquirer "^7.3.3"
     node-hid "^2.1.1"

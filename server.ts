@@ -30,17 +30,13 @@ const defaultProfileState : ProfileState = {
 
 let profileState : ProfileState;
 
-async function getDefaultState() {
-    const t = await profiles.asyncFind({});
-    console.log(t);
-}
-
 async function handleKeyboardInput(data: any) {
     if (data) {
         if ('_id' in data) {
             await serverGetProfile(data._id);
         } else {
             profileState = {...profileState, ...data};
+            await profiles.asyncUpdate({'_id': profileState._id}, profileState);
         }
         io.emit('profile server', profileState);
     }
@@ -50,38 +46,40 @@ async function serverGetProfile(num: number) {
     const next_profile = await profiles.asyncFindOne({'_id': num});
     if (next_profile) {
         profileState = next_profile;
+        await profiles.asyncUpdate({'_id': num}, profileState);
     } else {
         const new_profile = {...defaultProfileState, _id: num};
         await profiles.asyncInsert(new_profile);
         profileState = new_profile;
     }
+    
 }
 
 const keyboard = new TesoroGramSE('hungarian', handleKeyboardInput);
 
-io.on('connect', (socket: Socket) => {
-    console.log(socket.id);
+io.on('connect', async (socket: Socket) => {
 
-    socket.on('profile get', async(data,cb) => {
-        const { _id } = data;
-        await serverGetProfile(_id);
-        cb({profile: profileState});
-    });
+    await serverGetProfile(1);
+    io.emit('profile server', profileState);
 
-    socket.on('profile save', async(data) => {
+    socket.on('profile save', async(data,cb) => {
         profileState = {...profileState, ...data};
         await profiles.asyncUpdate({'_id': profileState._id}, {...profileState}, {upsert: true});
+        cb();
     });
 
-    socket.on('profile change', async() => {
+    socket.on('profile change', async(data,cb) => {
+        await serverGetProfile(data);
+        cb({profile: profileState});
         await keyboard.changeProfile(profileState._id!);
     });
 
-    socket.on('profile send', async() => {
+    socket.on('profile send', async(_, cb) => {
         if (keyboard.profile_state._id != profileState._id) {
             await keyboard.changeProfile(profileState._id!);
         }
         keyboard.setProfileSettings(profileState);
         await keyboard.sendProfileSettings();
+        cb();
     });
 });
