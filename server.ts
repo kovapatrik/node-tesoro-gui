@@ -1,18 +1,22 @@
-import HID from 'node-hid';
 import {TesoroGramSE, Profile, ProfileState} from 'node-tesoro';
 import express from 'express';
-import bodyParser from 'body-parser';
-import path from 'path';
 import AsyncNedb from 'nedb-async';
+import {Server, Socket} from 'socket.io';
+
+const PORT = process.env.PORT || 5000;
 
 const profiles = new AsyncNedb<ProfileState>({filename: './data/profiles.db', autoload: true});
 profiles.ensureIndex({fieldName: '_id'});
 
 const app = express();
-const port = process.env.PORT || 5000;
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(express.json());
+app.use(express.urlencoded({extended: true}));
+app.use('/', express.static('public'));
+
+const server = app.listen(PORT, ()=> console.log(`Running on ${PORT}`));
+
+const io = new Server(server);
 
 const defaultProfileState : ProfileState = {
     _id: undefined,
@@ -31,69 +35,53 @@ async function getDefaultState() {
     console.log(t);
 }
 
-//getDefaultState();
+async function handleKeyboardInput(data: any) {
+    if (data) {
+        if ('_id' in data) {
+            await serverGetProfile(data._id);
+        } else {
+            profileState = {...profileState, ...data};
+        }
+        io.emit('profile server', profileState);
+    }
+}
 
-const keyboard = new TesoroGramSE(new HID.HID(HID.devices()
-                      .filter(x => x.path && x.productId == 0x2057 && x.interface == 1 && x.path.includes("col05"))[0].path!), 
-                      'hungarian');
-
-// Getters
-app.post('/get/profile', async (req, res) => {
-    const next_profile = await profiles.asyncFindOne({'_id': req.body._id});
+async function serverGetProfile(num: number) {
+    const next_profile = await profiles.asyncFindOne({'_id': num});
     if (next_profile) {
         profileState = next_profile;
     } else {
-        const new_profile = {...defaultProfileState, _id: req.body._id};
+        const new_profile = {...defaultProfileState, _id: num};
         await profiles.asyncInsert(new_profile);
         profileState = new_profile;
     }
-    res.send({profile: profileState});
-    res.end();
-});
-// Setters
-app.post('/save/profile', async (req, res) => {
-    let recv_data = req.body;
-    if ('color' in recv_data) {
-        let color = recv_data.color;
-        delete recv_data.color;
-        profileState = {...profileState, ...recv_data, r: color.r, g: color.g, b: color.b};
-    } else {
-        profileState = {...profileState, ...recv_data};
-    }
-
-    await profiles.asyncUpdate({'_id': profileState._id}, {...profileState}, {upsert: true});
-    
-
-    res.send('ok');
-    res.end();
-})
-// Keyboard API
-app.post('/change/profile', async (req, res) => {
-    // query db for profile
-    let recv_data = req.body;
-    console.log('change profile', profileState._id);
-    await keyboard.changeProfile(recv_data._id);
-    res.end();
-})
-app.get('/send/profile', async (_, res) => {
-    console.log('send profile');
-    if (keyboard.profile_state._id != profileState._id) {
-        await keyboard.changeProfile(profileState._id!);
-    }
-    keyboard.setProfileSettings(profileState);
-    await keyboard.sendProfileSettings();
-    res.end();
-})
-
-
-
-if (process.env.NODE_ENV === 'production') {
-    // Serve any static files
-    app.use(express.static(path.join(__dirname, 'client/lib')));
-    // Handle React routing, return all requests to React app
-    app.get('*', function(_, res) {
-        res.sendFile(path.join(__dirname, 'client/lib', 'index.html'));
-    });
 }
 
-app.listen(port, () => console.log(`Listening on port ${port}`));
+const keyboard = new TesoroGramSE('hungarian', handleKeyboardInput);
+
+io.on('connect', (socket: Socket) => {
+    console.log(socket.id);
+
+    socket.on('profile get', async(data,cb) => {
+        const { _id } = data;
+        await serverGetProfile(_id);
+        cb({profile: profileState});
+    });
+
+    socket.on('profile save', async(data) => {
+        profileState = {...profileState, ...data};
+        await profiles.asyncUpdate({'_id': profileState._id}, {...profileState}, {upsert: true});
+    });
+
+    socket.on('profile change', async() => {
+        await keyboard.changeProfile(profileState._id!);
+    });
+
+    socket.on('profile send', async() => {
+        if (keyboard.profile_state._id != profileState._id) {
+            await keyboard.changeProfile(profileState._id!);
+        }
+        keyboard.setProfileSettings(profileState);
+        await keyboard.sendProfileSettings();
+    });
+});

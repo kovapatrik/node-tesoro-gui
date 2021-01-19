@@ -1,8 +1,10 @@
-import React, {SyntheticEvent, useEffect, useState} from 'react';
-import {Grid, Header, Button, Menu, Dropdown, Segment, GridColumn} from 'semantic-ui-react';
+import React, {useEffect, useState} from 'react';
+import {Grid, Header, Button, Menu, Dropdown, Segment} from 'semantic-ui-react';
 import {ChromePicker} from 'react-color';
 import InputRange from 'react-input-range';
+import {io} from 'socket.io-client';
 
+const socket = io('/');
 
 function App() {
 
@@ -10,48 +12,35 @@ function App() {
   const alpha = 1;
   useEffect(() => {
     getProfile(1);
+
+    socket.on('profile server', async(data:any) => {
+      setProfileState(data);
+    });
+    
   }, [])
 
-  async function getProfile(_id: number) {
-    const response = await fetch('/get/profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({_id})
-    });
-    const data = await response.json();
-    setProfileState({...data.profile});
-  }
-
-  async function handleProfileSendButton() {
-    await handleProfileSaveButton();
-    await fetch('/send/profile');
-  }
-
-  async function handleProfileSaveButton() {
-    await fetch('/save/profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(profileState)
+  function getProfile(_id: number) {
+    socket.emit('profile get', {_id}, (res:any) => {
+      setProfileState(res.profile)
     });
   }
 
-  async function handleChangeProfileOnly() {
-    await fetch('/change/profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({_id: profileState._id})
-    });
+  function handleProfileSendButton() {
+    handleProfileSaveButton();
+    socket.emit('profile send');
   }
 
-  async function handleProfileChanges(name : string, data: any) {
+  function handleProfileSaveButton() {
+    socket.emit('profile save', profileState)
+  }
+
+  function handleChangeProfileOnly() {
+    socket.emit('profile change', {_id: profileState._id});
+  }
+
+  function handleProfileChanges(name : string, data: any) {
     if (name == '_id') {
-      await getProfile(data);
+      getProfile(data);
     } else {
       if (name == 'color') {
         setProfileState({...profileState, r: data.r, g: data.g, b: data.b});
