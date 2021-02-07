@@ -21,6 +21,8 @@ export default function Spectrum({socket} : {socket : socket.Socket}) {
     const [buttonDisabled, setButtonDisabled] = useState(false);
     const [renameField, setRenameField] = useState('');
     const [renameRes, setRenameRes] = useState<boolean|undefined>(undefined);
+    const [activeButtons, setActiveButtons] =  useState<{[key: string]: HTMLElement}>({});
+    const [disabledSelectColor, setDisabledSelectColor] = useState(true);
 
     const [layout, setLayout] = useState<any>();
 
@@ -110,6 +112,12 @@ export default function Spectrum({socket} : {socket : socket.Socket}) {
         });
     }
 
+    function selectColorFromButton() {
+        const el = Object.values(activeButtons)[0];
+        const in_color = el.style.backgroundColor.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        setSpectrumColor({r: parseInt(in_color![1]), g: parseInt(in_color![2]), b: parseInt(in_color![3])})
+    }
+
     const spectrumEffectOptions = [
         { key: 0, content: 'Standard', value: 0 },
         { key: 1, content: 'Breathing', value: 1 },
@@ -143,10 +151,14 @@ export default function Spectrum({socket} : {socket : socket.Socket}) {
                     </Segment>
                     <Segment color='teal' inverted>
                         <Header size='medium'>Spectrum Color</Header>
-                        <ChromePicker disableAlpha={true} onChange={(d, _) => setSpectrumColor(d.rgb)} color={spectrumColor}/>
+                        <ChromePicker disableAlpha={true} onChange={(d, _) => setSpectrumColor(d.rgb)} color={spectrumColor} className={'colorPicker'}/>
+                        <Button className={'spectrumButton'} onClick={selectColorFromButton} disabled={disabledSelectColor}>Select Current Key Color</Button>
+                        <p>You must select only 1 key to use this button</p>
                     </Segment>
                     {spectrumState.keys ?
-                        <TesoroKeyboard key={spectrumState.key} color={spectrumColor} disabled={buttonDisabled} layout={layout} keys={spectrumState.keys} setSpectrumState={setSpectrumState}/>
+                        <TesoroKeyboard key={spectrumState.key} color={spectrumColor} disabled={buttonDisabled} layout={layout} 
+                                        keys={spectrumState.keys} setSpectrumState={setSpectrumState} activeButtons={activeButtons} setActiveButtons={setActiveButtons} 
+                                        setDisabledSelectColor={setDisabledSelectColor}/>
                     : <Segment>
                         <Header size='medium'>Select or add a spectrum profile...</Header>
                       </Segment>

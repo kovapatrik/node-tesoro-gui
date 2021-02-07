@@ -246,3 +246,7 @@ body {
 .renameField {
   min-width: 14em!important;
 }
+
+.colorPicker {
+  margin-bottom: 5px!important;
+}

@@ -3,10 +3,10 @@ import { Button, Segment } from 'semantic-ui-react';
 import Keyboard, { KeyboardOptions } from 'react-simple-keyboard';
 import { RGBColor } from 'react-color';
 
-export default function TesoroKeyboard({color, layout, keys, setSpectrumState, disabled} : {color: RGBColor, layout: any, keys: any, setSpectrumState: Function, disabled: boolean}) {
+export default function TesoroKeyboard({color, layout, keys, setSpectrumState, disabled, activeButtons, setActiveButtons, setDisabledSelectColor} : 
+                                       {color: RGBColor, layout: any, keys: any, setSpectrumState: Function, disabled: boolean, activeButtons: {[key: string]: HTMLElement}, setActiveButtons: Function, setDisabledSelectColor: Function}) {
 
     const [buttonContainer, setButtonContainer] = useState<{[key: string]: HTMLElement}>({});
-    const [activeButtons, setActiveButtons] =  useState<{[key: string]: HTMLElement}>({});
 
     // Button functions
 
@@ -44,6 +44,7 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
             in_change[btn] = el;
         }
         setActiveButtons(in_change);
+        setDisabledSelectColor(Object.keys(in_change).length !== 1);
     }
 
     function selectAll() {
@@ -52,6 +53,7 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
             el.style.boxShadow = `inset 0px 0px 0px 2px ${getContrast({r:parseInt(in_color![1]), g: parseInt(in_color![2]), b: parseInt(in_color![3])})}`;
         }
         setActiveButtons(buttonContainer);
+        setDisabledSelectColor(false);
     }
 
     function deselectAll() {
@@ -59,6 +61,7 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
             el.style.boxShadow = '';
         }
         setActiveButtons({});
+        setDisabledSelectColor(true);
     }
 
     function invertSelection() {
@@ -74,6 +77,7 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
             }
         }
         setActiveButtons(newActives);
+        setDisabledSelectColor(Object.keys(newActives).length !== 1);
     }
 
     function clearSelected() {
@@ -97,6 +101,7 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
         }))
     }
 
+    
     // Helper functions
 
     function convertBtnText(btn:string) {
