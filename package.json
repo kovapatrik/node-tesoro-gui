@@ -1,6 +1,6 @@
 {
   "name": "node-tesoro-gui-server",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "main": "lib/server.js",
   "author": "kovapatrik <kovapatrik@gmail.com>",
   "license": "MIT",
