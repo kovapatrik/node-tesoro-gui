@@ -237,3 +237,12 @@ body {
 .keyColorButton {
   margin-top: 10px!important;
 }
+
+.spectrumProfileButton {
+  margin-left: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+.renameField {
+  min-width: 14em!important;
+}

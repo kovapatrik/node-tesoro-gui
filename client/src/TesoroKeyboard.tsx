@@ -122,7 +122,6 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
     // Keyboard options
 
     function onRef(name: string, currKeyboard : Keyboard) {
-        console.log(name);
         const layout : string[] = currKeyboard.options.layout!.default;
         layout.forEach((row:string) => {
             const splitted = row.split(' ');

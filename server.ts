@@ -1,4 +1,4 @@
-import { TesoroGramSE, Profile, ProfileState, SpectrumState } from 'node-tesoro';
+import { TesoroGramSE, Profile, ProfileState, Spectrum, SpectrumState } from 'node-tesoro';
 import express from 'express';
 import AsyncNedb from 'nedb-async';
 import { Server, Socket } from 'socket.io';
@@ -31,14 +31,14 @@ const defaultProfileState : ProfileState = {
     effect_color: Profile.EffectColor.Static,
     brightness: Profile.Brightness.B100
 }
-
+ 
 const defaultSpectrumState : SpectrumState = {
     keys: keyboard.keys,
-    effect: 0
+    effect: Spectrum.Effect.Standard
 }
 
 let profileState : ProfileState;
-let spectrumState : SpectrumState;
+let spectrumState : SpectrumState|undefined;
 
 async function handleKeyboardInput(data: any) {
     if (data) {
@@ -79,8 +79,15 @@ async function serverGetSpectrum(name: string) {
 io.on('connect', async (socket: Socket) => { 
 
     await serverGetProfile(1);
-    await serverGetSpectrum('Default');
     io.emit('profile server', profileState);
+
+    const t = await spectrums.asyncFindOne({});
+    if (t) {
+        spectrumState = t;
+    } else {
+        spectrumState = undefined;
+    }
+
     io.emit('spectrum server', {layout: keyboard.layout_str, spectrums: spectrums.getAllData().map(d => {return d._id}), spectrumState} );
 
     socket.on('profile change', async(data,cb) => {
@@ -103,16 +110,39 @@ io.on('connect', async (socket: Socket) => {
     socket.on('spectrum change', async(data, cb) => {
         await serverGetSpectrum(data);
         cb({spectrumState, spectrums: spectrums.getAllData().map(d => {return d._id})});
-    })
+    });
 
     socket.on('spectrum save', async(data,cb) => {
         spectrumState = {...spectrumState, ...data};
-        await spectrums.asyncUpdate({'_id': spectrumState._id}, {...spectrumState}, {upsert: true});
+        await spectrums.asyncUpdate({'_id': spectrumState!._id}, {...spectrumState}, {upsert: true});
         cb();
     });
     
     socket.on('spectrum send', async(_, cb) => {
-        await keyboard.sendSpectrumSettings(spectrumState);
+        await keyboard.sendSpectrumSettings(spectrumState!);
         cb();
+    });
+
+    socket.on('spectrum rename', async(data,cb) => {
+        const spectrum = await spectrums.asyncFindOne({"_id": data});
+        if (spectrum) {
+            cb({error: true});
+        } else {
+            await spectrums.asyncRemove({"_id": spectrumState!._id});
+            spectrumState!._id = data;
+            await spectrums.asyncInsert(spectrumState!);
+            cb({error: false, spectrumState, spectrums: spectrums.getAllData().map(d => {return d._id})});
+        }
+    });
+
+    socket.on('spectrum delete', async(cb) => {
+        await spectrums.asyncRemove({'_id': spectrumState!._id});
+        const t = await spectrums.asyncFindOne({});
+        if (t) {
+            spectrumState = t;
+        } else {
+            spectrumState = undefined;
+        }
+        cb({spectrumState, spectrums: spectrums.getAllData().map(d => {return d._id}) });
     })
 });
