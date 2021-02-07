@@ -1425,6 +1425,11 @@ rc@^1.2.7:
     minimist "^1.2.0"
     strip-json-comments "~2.0.1"
 
+react-simple-keyboard@^2.5.120:
+  version "2.5.120"
+  resolved "https://registry.yarnpkg.com/react-simple-keyboard/-/react-simple-keyboard-2.5.120.tgz#c940b74c3c6dd5adebc935dedf36ea86371e245e"
+  integrity sha512-beoHXo+xriuJ8EzfKjVaMJ3oSyfHPGob7GUplVd2ueTYJz9q3wd+8bOjWg4DDsCM9i2z1SOyghjSmtsac0vXPQ==
+
 read-pkg-up@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/read-pkg-up/-/read-pkg-up-1.0.1.tgz#9d63c13276c065918d57f002a57f40a1b643fb02"

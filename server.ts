@@ -1,12 +1,15 @@
-import {TesoroGramSE, Profile, ProfileState} from 'node-tesoro';
+import { TesoroGramSE, Profile, ProfileState, SpectrumState } from 'node-tesoro';
 import express from 'express';
 import AsyncNedb from 'nedb-async';
-import {Server, Socket} from 'socket.io';
+import { Server, Socket } from 'socket.io';
 
 const PORT = process.env.PORT || 5000;
 
 const profiles = new AsyncNedb<ProfileState>({filename: './data/profiles.db', autoload: true});
+const spectrums = new AsyncNedb<SpectrumState>({filename: './data/spectrums.db', autoload: true});
+
 profiles.ensureIndex({fieldName: '_id'});
+spectrums.ensureIndex({fieldName: '_id'});
 
 const app = express();
 
@@ -18,8 +21,9 @@ const server = app.listen(PORT, ()=> console.log(`Running on ${PORT}`));
 
 const io = new Server(server);
 
+const keyboard = new TesoroGramSE('hungarian', handleKeyboardInput);
+
 const defaultProfileState : ProfileState = {
-    _id: undefined,
     r: 255,
     g: 76,
     b: 0,
@@ -28,7 +32,13 @@ const defaultProfileState : ProfileState = {
     brightness: Profile.Brightness.B100
 }
 
+const defaultSpectrumState : SpectrumState = {
+    keys: keyboard.keys,
+    effect: 0
+}
+
 let profileState : ProfileState;
+let spectrumState : SpectrumState;
 
 async function handleKeyboardInput(data: any) {
     if (data) {
@@ -46,27 +56,32 @@ async function serverGetProfile(num: number) {
     const next_profile = await profiles.asyncFindOne({'_id': num});
     if (next_profile) {
         profileState = next_profile;
-        await profiles.asyncUpdate({'_id': num}, profileState);
+        // await profiles.asyncUpdate({'_id': num}, profileState); // Needed if it's important which profile was the last one
     } else {
         const new_profile = {...defaultProfileState, _id: num};
         await profiles.asyncInsert(new_profile);
         profileState = new_profile;
     }
-    
 }
 
-const keyboard = new TesoroGramSE('hungarian', handleKeyboardInput);
+async function serverGetSpectrum(name: string) {
+    const next_spectrum = await spectrums.asyncFindOne({'_id': name});
+    if (next_spectrum) {
+        spectrumState = next_spectrum;
+        // await spectrums.asyncUpdate({'_id': name}, next_spectrum); // Needed if it's important which spectrum was the last one
+    } else {
+        const new_spectrum = {_id: name, ...defaultSpectrumState };
+        await spectrums.asyncInsert(new_spectrum);
+        spectrumState = new_spectrum;
+    }
+}
 
-io.on('connect', async (socket: Socket) => {
+io.on('connect', async (socket: Socket) => { 
 
     await serverGetProfile(1);
+    await serverGetSpectrum('Default');
     io.emit('profile server', profileState);
-
-    socket.on('profile save', async(data,cb) => {
-        profileState = {...profileState, ...data};
-        await profiles.asyncUpdate({'_id': profileState._id}, {...profileState}, {upsert: true});
-        cb();
-    });
+    io.emit('spectrum server', {layout: keyboard.layout_str, spectrums: spectrums.getAllData().map(d => {return d._id}), spectrumState} );
 
     socket.on('profile change', async(data,cb) => {
         await serverGetProfile(data);
@@ -74,12 +89,30 @@ io.on('connect', async (socket: Socket) => {
         await keyboard.changeProfile(profileState._id!);
     });
 
-    socket.on('profile send', async(_, cb) => {
-        if (keyboard.profile_state._id != profileState._id) {
-            await keyboard.changeProfile(profileState._id!);
-        }
-        keyboard.setProfileSettings(profileState);
-        await keyboard.sendProfileSettings();
+    socket.on('profile save', async(data,cb) => {
+        profileState = {...profileState, ...data};
+        await profiles.asyncUpdate({'_id': profileState._id}, {...profileState}, {upsert: true});
         cb();
     });
+
+    socket.on('profile send', async(_, cb) => {
+        await keyboard.sendProfileSettings(profileState);
+        cb();
+    });
+
+    socket.on('spectrum change', async(data, cb) => {
+        await serverGetSpectrum(data);
+        cb({spectrumState, spectrums: spectrums.getAllData().map(d => {return d._id})});
+    })
+
+    socket.on('spectrum save', async(data,cb) => {
+        spectrumState = {...spectrumState, ...data};
+        await spectrums.asyncUpdate({'_id': spectrumState._id}, {...spectrumState}, {upsert: true});
+        cb();
+    });
+    
+    socket.on('spectrum send', async(_, cb) => {
+        await keyboard.sendSpectrumSettings(spectrumState);
+        cb();
+    })
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import 'semantic-ui-css/semantic.min.css'
+import "react-simple-keyboard/build/css/index.css";
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
