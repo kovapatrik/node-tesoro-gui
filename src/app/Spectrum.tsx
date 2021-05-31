@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { RGBColor, ChromePicker } from 'react-color';
 import { Grid, Segment, Header, Dropdown, Menu, Button, Input } from 'semantic-ui-react';
 import TesoroKeyboard from './TesoroKeyboard';
-
-import socket from 'socket.io-client'
+const { ipcRenderer } = window.require("electron");
 
 interface SpectrumState {
     key?: string,
@@ -13,7 +12,7 @@ interface SpectrumState {
     keys?: any
 };
 
-export default function Spectrum({socket} : {socket : socket.Socket}) {
+export default function Spectrum() {
 
     const [spectrumColor, setSpectrumColor] = useState<RGBColor>({r: 255, g: 0, b: 0});
     const [spectrums, setSpectrums] = useState<SpectrumState[]>([]);
@@ -28,7 +27,8 @@ export default function Spectrum({socket} : {socket : socket.Socket}) {
 
     useEffect(() => {
 
-        socket.on('spectrum server', (data:any) => {
+        async function spectrumConnect() {
+            const data = await ipcRenderer.invoke('spectrum connect');
             setLayout(data.layout);
             for (const d of data.spectrums) {
                 setSpectrums(prevState => ([
@@ -41,15 +41,45 @@ export default function Spectrum({socket} : {socket : socket.Socket}) {
             } else {
                 setSpectrumState({key: data.spectrumState._id, value: data.spectrumState._id, text: data.spectrumState._id, effect: data.spectrumState.effect, keys: data.spectrumState.keys});
             }   
-        });
-    })
+        }
+        spectrumConnect();
+    });
 
     function handleEffectChange(effect: number) {
         setSpectrumState({...spectrumState, effect});
     }
 
-    function handleChange(data:any) {
-        socket.emit('spectrum change', data.value, (res:any) => {
+    async function handleChange(data:any) {
+        const res = await ipcRenderer.invoke('spectrum change', data.value);
+        setSpectrums([]);
+        for (const d of res.spectrums) {
+            setSpectrums(prevState => ([
+                ...prevState,
+                {key: d, value: d, text: d}
+            ]));
+        }
+        setSpectrumState({key: res.spectrumState._id, value: res.spectrumState._id, text: res.spectrumState._id, effect: res.spectrumState.effect, keys: res.spectrumState.keys});
+        // setCurrentSpectrum(spectrums.find((el) => {return data.value === el.value})!);
+    }
+
+    async function handleSpectrumSaveButton() {
+        setButtonDisabled(true);
+        await ipcRenderer.invoke('spectrum save', {keys: spectrumState!.keys, effect: spectrumState!.effect});
+        setButtonDisabled(false);
+    }
+
+    async function handleSpectrumSendButton() {
+        setButtonDisabled(true);
+        await ipcRenderer.invoke('spectrum save', {keys: spectrumState!.keys, effect: spectrumState!.effect});
+        await await ipcRenderer.invoke('spectrum send');
+        setButtonDisabled(false);
+    }
+
+    async function renameSpectrum() {
+        setRenameRes(undefined);
+        const res = await ipcRenderer.invoke('spectrum rename', renameField);
+        setRenameRes(res.error);
+        if (!res.error) {
             setSpectrums([]);
             for (const d of res.spectrums) {
                 setSpectrums(prevState => ([
@@ -58,58 +88,23 @@ export default function Spectrum({socket} : {socket : socket.Socket}) {
                 ]));
             }
             setSpectrumState({key: res.spectrumState._id, value: res.spectrumState._id, text: res.spectrumState._id, effect: res.spectrumState.effect, keys: res.spectrumState.keys});
-        });
-        // setCurrentSpectrum(spectrums.find((el) => {return data.value === el.value})!);
+        }
     }
 
-    function handleSpectrumSaveButton() {
-        setButtonDisabled(true);
-        socket.emit('spectrum save', {keys: spectrumState!.keys, effect: spectrumState!.effect}, () => {
-            setButtonDisabled(false);
-        })
-    }
-
-    function handleSpectrumSendButton() {
-        setButtonDisabled(true);
-        socket.emit('spectrum save', {keys: spectrumState!.keys, effect: spectrumState!.effect}, () => {
-            socket.emit('spectrum send', {}, () => {
-                setButtonDisabled(false);
-            });
-        });
-    }
-
-    function renameSpectrum() {
-        setRenameRes(undefined);
-        socket.emit('spectrum rename', renameField, (res:any) => {
-            setRenameRes(res.error);
-            if (!res.error) {
-                setSpectrums([]);
-                for (const d of res.spectrums) {
-                    setSpectrums(prevState => ([
-                        ...prevState,
-                        {key: d, value: d, text: d}
-                    ]));
-                }
-                setSpectrumState({key: res.spectrumState._id, value: res.spectrumState._id, text: res.spectrumState._id, effect: res.spectrumState.effect, keys: res.spectrumState.keys});
-            }
-        });
-    }
-
-    function deleteSpectrum() {
-        socket.emit('spectrum delete', (res:any) => {
-            setSpectrums([]);
-            for (const d of res.spectrums) {
-                setSpectrums(prevState => ([
-                    ...prevState,
-                    {key: d, value: d, text: d}
-                ]));
-            }
-            if (res.spectrumState === undefined) {
-                setSpectrumState({key: undefined, value: undefined, text: undefined, effect: undefined, keys: undefined});
-            } else {
-                setSpectrumState({key: res.spectrumState._id, value: res.spectrumState._id, text: res.spectrumState._id, effect: res.spectrumState.effect, keys: res.spectrumState.keys});
-            }   
-        });
+    async function deleteSpectrum() {
+        const res = await ipcRenderer.invoke('spectrum delete');
+        setSpectrums([]);
+        for (const d of res.spectrums) {
+            setSpectrums(prevState => ([
+                ...prevState,
+                {key: d, value: d, text: d}
+            ]));
+        }
+        if (res.spectrumState === undefined) {
+            setSpectrumState({key: undefined, value: undefined, text: undefined, effect: undefined, keys: undefined});
+        } else {
+            setSpectrumState({key: res.spectrumState._id, value: res.spectrumState._id, text: res.spectrumState._id, effect: res.spectrumState.effect, keys: res.spectrumState.keys});
+        }   
     }
 
     function selectColorFromButton() {

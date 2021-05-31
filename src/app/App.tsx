@@ -1,10 +1,7 @@
 import React from 'react';
 import { Grid, Header } from 'semantic-ui-react';
-import {io} from 'socket.io-client';
 import Profile from './Profile';
 import Spectrum from './Spectrum';
-
-const socket = io('/');
 
 export default function App() {
   
@@ -13,8 +10,8 @@ export default function App() {
       <Header size='huge'>Tesoro GRAM SE Spectrum GUI</Header>
       <Grid>
         <Grid.Row columns={2} stretched>
-          <Profile socket={socket}/>
-          <Spectrum socket={socket}/>
+          <Profile/>
+          <Spectrum/>
         </Grid.Row>
         
         {/* <Grid.Row stretched centered>

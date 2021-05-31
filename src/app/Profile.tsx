@@ -2,41 +2,41 @@ import { useEffect, useState } from 'react';
 import {ChromePicker} from 'react-color';
 import InputRange from 'react-input-range';
 import {Grid, Header, Button, Menu, Dropdown, Segment} from 'semantic-ui-react';
-import socket from 'socket.io-client'
 
-export default function Profile({ socket }: { socket: socket.Socket }) {
+const { ipcRenderer } = window.require("electron");
+
+export default function Profile() {
 
     const [profileState, setProfileState] = useState({ _id: 0, r: 0, g: 0, b: 0, effect: 0, effect_color: 0, brightness: 0 })
     const [buttonDisabled, setButtonDisabled] = useState(false)
 
     const alpha = 1;
+    
     useEffect(() => {
-        socket.on('profile server', async (data: any) => {
+        async function profileConnect() {
+            const data = await ipcRenderer.invoke('profile connect');
             setProfileState(data);
-        });
+        }
+        profileConnect();
     })
 
-    function handleProfileSaveButton() {
+    async function handleProfileSaveButton() {
         setButtonDisabled(true);
-        socket.emit('profile save', profileState, () => {
-            setButtonDisabled(false);
-        });
+        await ipcRenderer.invoke('profile save', profileState)
+        setButtonDisabled(false);
     }
 
-    function handleProfileSendButton() {
+    async function handleProfileSendButton() {
         setButtonDisabled(true);
-        socket.emit('profile save', profileState, () => {
-            socket.emit('profile send', {}, () => {
-                setButtonDisabled(false);
-            });
-        });
+        await ipcRenderer.invoke('profile save', profileState);
+        await ipcRenderer.invoke('profile send')
+        setButtonDisabled(false);
     }
     
-    function handleProfileChanges(name: string, data: any) {
+    async function handleProfileChanges(name: string, data: any) {
         if (name === '_id') {
-            socket.emit('profile change', data, (res: any) => {
-                setProfileState(res.profile);
-            });
+            const res = await ipcRenderer.invoke('profile change', data);
+            setProfileState(res.profile);
         } else {
             if (name === 'color') {
                 setProfileState({ ...profileState, r: data.r, g: data.g, b: data.b });
