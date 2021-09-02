@@ -16,10 +16,6 @@ export default function App() {
           <Profile socket={socket}/>
           <Spectrum socket={socket}/>
         </Grid.Row>
-        
-        {/* <Grid.Row stretched centered>
-          <TesoroKeyboard socket={socket}/>
-        </Grid.Row> */}
       </Grid>
     </div>
   );

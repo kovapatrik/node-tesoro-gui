@@ -21,7 +21,10 @@ const server = app.listen(PORT, ()=> console.log(`Running on ${PORT}`));
 
 const io = new Server(server);
 
-const keyboard = new TesoroGramSE('hungarian', handleKeyboardInput);
+const keyboard = new TesoroGramSE({
+    layout: 'hungarian',
+    callback: handleKeyboardInput
+});
 
 const defaultProfileState : ProfileState = {
     r: 255,

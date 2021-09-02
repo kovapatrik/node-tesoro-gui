@@ -100,7 +100,6 @@ body {
   display: flex;
   background-color: rgba(0, 0, 0, 0.1);
   justify-content: center;
-  width: 1024px;
   margin: 0 auto;
   border-radius: 5px;
 }
@@ -114,8 +113,8 @@ body {
 }
 
 .simple-keyboard-main.simple-keyboard {
-  width: 640px;
-  min-width: 640px;
+  /* width: 640px;
+  min-width: 640px; */
   background: none;
 }
 

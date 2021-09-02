@@ -169,7 +169,7 @@ export default function TesoroKeyboard({color, layout, keys, setSpectrumState, d
     }
 
     return (
-        <Segment>
+        <Segment >
             {layout ?
                 <div>
                     <div className="keyboardContainer">
